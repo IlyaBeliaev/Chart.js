@@ -5,7 +5,6 @@ var Chart = require('./core/core.js')();
 
 require('./core/core.helpers')(Chart);
 require('./helpers/helpers.time')(Chart);
-
 require('./platforms/platform.js')(Chart);
 require('./core/core.canvasHelpers')(Chart);
 require('./core/core.element')(Chart);
@@ -26,11 +25,13 @@ require('./elements/element.point')(Chart);
 require('./elements/element.rectangle')(Chart);
 
 require('./scales/scale.linearbase.js')(Chart);
+require('./scales/scale.timebase.js')(Chart);
 require('./scales/scale.category')(Chart);
 require('./scales/scale.linear')(Chart);
 require('./scales/scale.logarithmic')(Chart);
 require('./scales/scale.radialLinear')(Chart);
 require('./scales/scale.time')(Chart);
+require('./scales/scale.timeseries')(Chart);
 
 // Controllers must be loaded after elements
 // See Chart.core.datasetController.dataElementType
