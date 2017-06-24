@@ -1,5 +1,8 @@
 'use strict';
 
+var moment = require('moment');
+moment = typeof(moment) === 'function' ? moment : window.moment;
+
 module.exports = function(Chart) {
 
 	var helpers = Chart.helpers;
@@ -21,17 +24,17 @@ module.exports = function(Chart) {
 			displayFormats: {
 				millisecond: 'h:mm:ss.SSS a', // 11:20:01.123 AM,
 				second: 'h:mm:ss a', // 11:20:01 AM
-				minute: 'h:mm:ss a', // 11:20:01 AM
-				hour: 'MMM D, hA', // Sept 4, 5PM
-				day: 'll', // Sep 4 2015
-				week: 'll', // Week 46, or maybe "[W]WW - YYYY" ?
+				minute: 'h:mm a', // 11:20 AM
+				hour: 'hA', // 5PM
+				day: 'MMM D', // Sep 4
+				week: 'MMM D', // Week 46, or maybe "[W]WW - YYYY" ?
 				month: 'MMM YYYY', // Sept 2015
 				quarter: '[Q]Q - YYYY', // Q3
 				year: 'YYYY' // 2015
 			},
 		},
 		ticks: {
-			autoSkip: true
+			autoSkip: false
 		}
 	};
 
@@ -127,17 +130,70 @@ module.exports = function(Chart) {
 
 			var maxTicks = me.getLabelCapacity(dataMin);
 			var unit = timeOpts.unit || timeHelpers.determineUnit(timeOpts.minUnit, dataMin, dataMax, maxTicks);
+			var majorUnit = timeHelpers.determineMajorUnit(unit);
 			me.displayFormat = timeOpts.displayFormats[unit];
+			me.majorDisplayFormat = timeOpts.displayFormats[majorUnit];
+			me.unit = unit;
+			me.majorUnit = majorUnit;
+			var skipCount = allTimestamps.length / maxTicks
+
+			var ticks = []
+			var tickIndexes = []
+			helpers.each(allTimestamps, function(tick, index) {
+				var previousTick = index > 0 ? allTimestamps[index - 1] : null;
+				var nextTick = index < allTimestamps.length - 1 ? allTimestamps[index + 1] : null;
+				var lastDisplayedTickIndex = tickIndexes.length ? tickIndexes[tickIndexes.length - 1] : null;
+
+				if (!previousTick) {
+					if (majorUnit) {
+						ticks.push(moment(tick).startOf(majorUnit).valueOf());
+					} else {
+						ticks.push(tick);
+					}
+
+					tickIndexes.push(index);
+				} else if (majorUnit &&
+					moment(tick).startOf(majorUnit).valueOf() !== moment(previousTick).startOf(majorUnit).valueOf()) {
+
+					if (index - lastDisplayedTickIndex < skipCount && ticks.length > 1) {
+
+						ticks[ticks.length - 1] = moment(tick).startOf(majorUnit).valueOf();
+						tickIndexes[tickIndexes.length - 1] = index;
+
+						if (ticks.length > 2) {
+							var newPrevTickIndex = Math.round((index - tickIndexes[ticks.length - 3]) / 2) + tickIndexes[ticks.length - 3];
+							ticks[ticks.length - 2] = allTimestamps[newPrevTickIndex];
+							tickIndexes[ticks.length - 2] = newPrevTickIndex;
+						}
+
+					} else {
+						ticks.push(moment(tick).startOf(majorUnit).valueOf());
+						tickIndexes.push(index);
+					}
+				} else if (index - lastDisplayedTickIndex > skipCount) {
+					ticks.push(tick);
+					tickIndexes.push(index);
+				} else if (nextTick === null) {
+					if (index - lastDisplayedTickIndex < skipCount) {
+						ticks[ticks.length - 1] = tick;
+						tickIndexes[tickIndexes.length - 1] = index;
+					} else {
+						ticks.push(tick);
+						tickIndexes.push(index);
+					}
+				}
+			})
 
 			me._tickTimestamps = allTimestamps;
-			me.ticks = allTimestamps;
+			me.ticks = ticks;
+			me.tickIndexes = tickIndexes;
 		},
 
 		// Used to get data value locations.  Value can either be an index or a numerical value
 		getPixelForValue: function(value, index, datasetIndex, includeOffset) {
 			var me = this;
 
-			var offsetAmt = Math.max((me.ticks.length - ((me.options.gridLines.offsetGridLines) ? 0 : 1)), 1);
+			var offsetAmt = Math.max((me._tickTimestamps.length - ((me.options.gridLines.offsetGridLines) ? 0 : 1)), 1);
 
 			if (typeof datasetIndex === 'number') {
 				var timestamp = me._parsedData.datasets[datasetIndex][index];
@@ -158,7 +214,7 @@ module.exports = function(Chart) {
 			if (this.ticks.length === 1) {
 				includeOffset = true;
 			}
-			return this.getPixelForValue(this.ticks[index], index, null, includeOffset);
+			return this.getPixelForValue(this.ticks[index], this.tickIndexes[index], null, includeOffset);
 		},
 		getValueForPixel: function(pixel) {
 			var me = this;

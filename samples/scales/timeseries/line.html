@@ -30,15 +30,15 @@
 		var timeFormat = 'MM/DD/YYYY HH:mm';
 
 		function newDate(days) {
-			return moment().add(days, 'd').toDate();
+			return moment().add(days, 'h').toDate();
 		}
 
 		function newDateString(days) {
-			return moment().add(days, 'd').format();
+			return moment().add(days, 'h').format();
 		}
 
 		function newTimestamp(days) {
-			return moment().add(days, 'd').unix();
+			return moment().add(days, 'h').unix();
 		}
 
         var numDataPoints = 120;
